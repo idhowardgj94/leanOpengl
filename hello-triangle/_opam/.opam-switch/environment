@@ -1,0 +1,3 @@
+OPAM_SWITCH_PREFIX	=	/home/howard/workspace/learnOpengl/hello-triangle/_opam	:	target	Prefix\ of\ the\ current\ opam\ switch
+MANPATH	=:	/home/howard/workspace/learnOpengl/hello-triangle/_opam/man	:	host	Current\ opam\ switch\ man\ dir
+PATH	=+=	/home/howard/workspace/learnOpengl/hello-triangle/_opam/bin	:	target	Binary\ dir\ for\ opam\ switch\ /home/howard/workspace/learnOpengl/hello-triangle

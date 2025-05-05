@@ -1,0 +1,8 @@
+(executable
+ (name main)
+ (libraries stdint base fmt 
+            glfw-ocaml glMLite glMLite.vertex_arrays glMLite.vbo
+ ))
+(env
+ (dev
+  (flags (:standard -w -6-33-27-26-32))))

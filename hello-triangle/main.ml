@@ -1,0 +1,113 @@
+open Format
+open Bigarray
+open VertArray
+open VBO
+open GL
+
+let width = 800
+let height = 600
+
+let vertexShaderSource =
+  "#version 330 core\n" ^ "layout (location = 0) in vec3 aPos;\n"
+  ^ "void main()\n" ^ "{\n"
+  ^ "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" ^ "}"
+
+let fragmentShaderSource =
+  "#version 330 core\n" ^ "out vec4 FragColor;\n" ^ "void main()\n" ^ "{\n"
+  ^ "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n" ^ "}\n"
+
+let read_test_bin () =
+  let ic =
+    open_in_bin "/home/howard/workspace/playboy/resource/RGB888_red_720x480.bin"
+  in
+  let len = in_channel_length ic in
+  let buf = really_input_string ic len in
+  buf
+
+let arr = [| [| -0.5; -0.5; 0.0 |]; [| 0.5; -0.5; 0.0 |]; [| 0.0; 0.5; 0.0 |] |]
+let arr2 = [| -0.5; -0.5; 0.0; 0.5; -0.5; 0.0; 0.0; 0.5; 0.0 |]
+
+let big_array_of_2d_array x y arr =
+  let big_array = Genarray.create Float32 C_layout [| x; y |] in
+  for i = 0 to x - 1 do
+    for j = 0 to y - 1 do
+      Genarray.set big_array [| i; j |] arr.(i).(j)
+    done
+  done;
+  big_array
+
+let () =
+  (* Initialize the library *)
+  GLFW.init ();
+
+  GLFW.windowHint GLFW.ContextVersionMajor 3;
+  GLFW.windowHint GLFW.ContextVersionMinor 3;
+  GLFW.windowHint GLFW.OpenGLProfile GLFW.CoreProfile;
+
+  (* GLFW.windowHint GLFW.OpenGLForwardCompat false; *)
+  at_exit GLFW.terminate;
+
+  (* Create a windowed mode window and its OpenGL context *)
+  let window = GLFW.createWindow ~width ~height ~title:"LearnOpenGL" () in
+  (* Make the window's context current *)
+  GLFW.makeContextCurrent (Some window);
+
+  let _cb =
+    GLFW.setFramebufferSizeCallback window
+      (Some (fun w w h -> glViewport 0 0 w h))
+  in
+
+  (* build and compile shader programs *)
+  (* vertex shader *)
+  let vertexShader = glCreateShader GL_VERTEX_SHADER in
+  glShaderSource vertexShader vertexShaderSource;
+  glCompileShader vertexShader;
+  let res = glGetShaderInfoLog vertexShader in
+  printf "%s\n" res;
+
+  (* fragment shader *)
+  let fragmentShader = glCreateShader GL_FRAGMENT_SHADER in
+  glShaderSource fragmentShader fragmentShaderSource;
+  glCompileShader fragmentShader;
+  let res = glGetShaderInfoLog fragmentShader in
+  printf "%s\n" res;
+
+  (* link program *)
+  let shaderProgram = glCreateProgram () in
+  glAttachShader shaderProgram vertexShader;
+  glAttachShader shaderProgram fragmentShader;
+  glLinkProgram shaderProgram;
+
+  let res = glGetProgramInfoLog shaderProgram in
+  printf "%s\n" res;
+  glDeleteShader vertexShader;
+  glDeleteShader fragmentShader;
+
+  (* VAO VBO *)
+  let vao = glGenVertexArray () in
+  let vbo = glGenBuffer () in
+  (* bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s). *)
+  glBindVertexArray vao;
+  glBindBuffer GL_ARRAY_BUFFER vbo;
+  let ba = Array1.of_array Float32 C_layout arr2 in
+  glBufferData GL_ARRAY_BUFFER (ba_sizeof ba) ba GL_STATIC_DRAW;
+  glVertexAttribPointer 0 3 GL_FLOAT false (3 * kind_size_in_bytes Float32) ba;
+  (* (Array1.of_array Float32 C_layout arr2); *)
+  glEnableVertexAttribArray 0;
+
+  (* Loop until the user closes the window *)
+  while not (GLFW.windowShouldClose window) do
+    (* Render here *)
+    glClearColor 0.2 0.3 0.3 1.0;
+    glClear [ GL_COLOR_BUFFER_BIT ];
+
+    glUseProgram shaderProgram;
+    glBindVertexArray vao;
+    glDrawArrays GL_TRIANGLES 0 3;
+
+    (* Swap front and back buffers *)
+    GLFW.swapBuffers window;
+    (* Poll for and process events *)
+    GLFW.pollEvents ()
+  done
+
