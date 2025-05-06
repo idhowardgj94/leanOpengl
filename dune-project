@@ -1,6 +1,7 @@
 (lang dune 3.18)
 
 (name learnOpengl)
+(version 0.0.1)
 
 (generate_opam_files true)
 
@@ -16,6 +17,7 @@
 (documentation https://url/to/documentation)
 
 (package
+(allow_empty)
  (name learnOpengl)
  (synopsis "A short synopsis")
  (description "A longer description")

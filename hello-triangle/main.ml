@@ -10,7 +10,7 @@ let height = 600
 let vertexShaderSource =
   "#version 330 core\n" ^ "layout (location = 0) in vec3 aPos;\n"
   ^ "void main()\n" ^ "{\n"
-  ^ "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" ^ "}"
+  ^ "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" ^ "}\n"
 
 let fragmentShaderSource =
   "#version 330 core\n" ^ "out vec4 FragColor;\n" ^ "void main()\n" ^ "{\n"
@@ -24,19 +24,8 @@ let read_test_bin () =
   let buf = really_input_string ic len in
   buf
 
-let arr = [| [| -0.5; -0.5; 0.0 |]; [| 0.5; -0.5; 0.0 |]; [| 0.0; 0.5; 0.0 |] |]
-let arr2 = [| -0.5; -0.5; 0.0; 0.5; -0.5; 0.0; 0.0; 0.5; 0.0 |]
-
-let big_array_of_2d_array x y arr =
-  let big_array = Genarray.create Float32 C_layout [| x; y |] in
-  for i = 0 to x - 1 do
-    for j = 0 to y - 1 do
-      Genarray.set big_array [| i; j |] arr.(i).(j)
-    done
-  done;
-  big_array
-
-let () =
+let arr = [| -0.5; -0.5; 0.0; 0.5; -0.5; 0.0; 0.0; 0.5; 0.0 |]
+let _ = 
   (* Initialize the library *)
   GLFW.init ();
 
@@ -52,25 +41,26 @@ let () =
   (* Make the window's context current *)
   GLFW.makeContextCurrent (Some window);
 
-  let _cb =
+  let _ =
     GLFW.setFramebufferSizeCallback window
-      (Some (fun w w h -> glViewport 0 0 w h))
+      (Some (fun win w h -> glViewport 0 0 w h))
   in
 
-  (* build and compile shader programs *)
+  glViewport 0 0 width height;
+   (* build and compile shader programs *)
   (* vertex shader *)
   let vertexShader = glCreateShader GL_VERTEX_SHADER in
   glShaderSource vertexShader vertexShaderSource;
   glCompileShader vertexShader;
   let res = glGetShaderInfoLog vertexShader in
-  printf "%s\n" res;
+  if res <> ""  then printf "%s\n" res; 
 
   (* fragment shader *)
   let fragmentShader = glCreateShader GL_FRAGMENT_SHADER in
   glShaderSource fragmentShader fragmentShaderSource;
   glCompileShader fragmentShader;
   let res = glGetShaderInfoLog fragmentShader in
-  printf "%s\n" res;
+  if res <> "" then printf "%s\n" res; 
 
   (* link program *)
   let shaderProgram = glCreateProgram () in
@@ -79,7 +69,7 @@ let () =
   glLinkProgram shaderProgram;
 
   let res = glGetProgramInfoLog shaderProgram in
-  printf "%s\n" res;
+  if res <> "" then printf "%s\n" res; 
   glDeleteShader vertexShader;
   glDeleteShader fragmentShader;
 
@@ -88,13 +78,27 @@ let () =
   let vbo = glGenBuffer () in
   (* bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s). *)
   glBindVertexArray vao;
+  
+  let ba = Array1.of_array Float32 C_layout arr in
   glBindBuffer GL_ARRAY_BUFFER vbo;
-  let ba = Array1.of_array Float32 C_layout arr2 in
-  glBufferData GL_ARRAY_BUFFER (ba_sizeof ba) ba GL_STATIC_DRAW;
-  glVertexAttribPointer 0 3 GL_FLOAT false (3 * kind_size_in_bytes Float32) ba;
-  (* (Array1.of_array Float32 C_layout arr2); *)
+  glBufferData GL_ARRAY_BUFFER (ba_sizeof ba) ba GL_STATIC_DRAW; 
+  
+  glVertexAttribPointer0 ~index:0 ~size:3 ~data_type:GL_FLOAT ~normalized:false ~stride:(3 * kind_size_in_bytes Float32);
   glEnableVertexAttribArray 0;
 
+  let err = glGetError () in
+    let err_str = match err with
+    | GL_NO_ERROR -> "no error"
+    | GL_INVALID_ENUM -> "invalid enum"
+    | GL_INVALID_VALUE -> "invalid value"
+    | GL_INVALID_OPERATION -> "invalid operation"
+    | GL_STACK_OVERFLOW -> "stack overflow"
+    | GL_STACK_UNDERFLOW -> "stack underflow"
+    | GL_OUT_OF_MEMORY -> "out of memory"
+    | GL_TABLE_TOO_LARGE -> "table too large" in
+    printf "err: %s\n" err_str;
+
+    
   (* Loop until the user closes the window *)
   while not (GLFW.windowShouldClose window) do
     (* Render here *)
@@ -102,12 +106,15 @@ let () =
     glClear [ GL_COLOR_BUFFER_BIT ];
 
     glUseProgram shaderProgram;
-    glBindVertexArray vao;
     glDrawArrays GL_TRIANGLES 0 3;
-
+   
+    (* Unix.sleepf 0.3; *)
     (* Swap front and back buffers *)
     GLFW.swapBuffers window;
     (* Poll for and process events *)
     GLFW.pollEvents ()
-  done
+  done;
 
+  glDeleteVertexArray 1;
+  glDeleteBuffer vbo;
+  glDeleteProgram shaderProgram
